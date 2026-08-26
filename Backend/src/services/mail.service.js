@@ -1,13 +1,18 @@
 import nodemailer from "nodemailer";
 
 export function getTransporter() {
-    const user = (process.env.GOOGLE_USER || process.env.EMAIL_USER || "").trim();
+    const user = (process.env.GOOGLE_USER || process.env.EMAIL_USER || "verify.querium@gmail.com").trim();
     const pass = (process.env.GOOGLE_APP_PASSWORD || process.env.EMAIL_PASS || "").replace(/\s+/g, "").trim();
 
-    // If Gmail App Password is provided (16-character App Password)
+    // If Gmail App Password is provided (Recommended for ultra-fast & cloud delivery)
     if (pass) {
         return nodemailer.createTransport({
-            service: "gmail",
+            host: "smtp.gmail.com",
+            port: 465,
+            secure: true,
+            pool: true,
+            maxConnections: 5,
+            maxMessages: 100,
             auth: {
                 user,
                 pass,
@@ -18,9 +23,14 @@ export function getTransporter() {
         });
     }
 
-    // High-speed OAuth2 setup
+    // High-speed OAuth2 setup with Direct SSL configuration for cloud platforms
     return nodemailer.createTransport({
-        service: "gmail",
+        host: "smtp.gmail.com",
+        port: 465,
+        secure: true,
+        pool: true,
+        maxConnections: 5,
+        maxMessages: 100,
         auth: {
             type: "OAUTH2",
             user,
@@ -34,13 +44,10 @@ export function getTransporter() {
     });
 }
 
-export async function sendEmail({ to, subject, html, text }) {
-    const sender = (process.env.GOOGLE_USER || process.env.EMAIL_USER || "").trim();
-    if (!sender) {
-        throw new Error("GOOGLE_USER environment variable is missing. Please set your Gmail address in environment variables.");
-    }
+const defaultTransporter = getTransporter();
 
-    const transporter = getTransporter();
+export async function sendEmail({ to, subject, html, text }) {
+    const sender = (process.env.GOOGLE_USER || process.env.EMAIL_USER || "verify.querium@gmail.com").trim();
     const plainTextFallback = text || (html ? html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() : "");
     
     const mailOptions = {
@@ -53,7 +60,7 @@ export async function sendEmail({ to, subject, html, text }) {
     };
 
     try {
-        const details = await transporter.sendMail(mailOptions);
+        const details = await defaultTransporter.sendMail(mailOptions);
         console.log("Email sent successfully from", sender, "to:", to, details.messageId);
         return details;
     } catch (err) {
