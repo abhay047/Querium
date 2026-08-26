@@ -1,7 +1,7 @@
-import jwt from "jsonwebtoken"
-import redis from "../config/cache.js";
+import jwt from "jsonwebtoken";
+import { safeRedisGet } from "../config/cache.js";
 
-export async function authUser(req,res,next){
+export async function authUser(req, res, next) {
     let token = req.cookies?.token;
 
     if (!token && req.headers.authorization) {
@@ -14,34 +14,32 @@ export async function authUser(req,res,next){
         }
     }
 
-    if(!token || token === "null" || token === "undefined"){
+    if (!token || token === "null" || token === "undefined") {
         return res.status(401).json({
             message: "Unauthorized",
             success: false,
             err: "No token provided"
-        })
+        });
     }
 
-    try{
-        const isBlacklisted = await redis.get(`token:${token}`);
-        if(isBlacklisted){
+    try {
+        const isBlacklisted = await safeRedisGet(`token:${token}`);
+        if (isBlacklisted) {
             return res.status(401).json({
                 message: "Unauthorized",
                 success: false,
                 err: "Token is blacklisted"
-            })
+            });
         }
 
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
         req.user = decoded;
-
-        next()
-    }catch(err){
+        next();
+    } catch (err) {
         return res.status(401).json({
             message: "Unauthorized",
             success: false,
-            err:"Invalid token"
-        })
+            err: "Invalid token"
+        });
     }
 }

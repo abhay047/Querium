@@ -1,23 +1,25 @@
 import nodemailer from "nodemailer";
 
 function createTransporter() {
-    // If Gmail App Password is provided (easier setup for production)
+    const user = process.env.GOOGLE_USER || process.env.EMAIL_USER || "verify.querium@gmail.com";
+
+    // If Gmail App Password is provided (recommended for production)
     if (process.env.GOOGLE_APP_PASSWORD || process.env.EMAIL_PASS) {
         return nodemailer.createTransport({
             service: "gmail",
             auth: {
-                user: process.env.GOOGLE_USER || process.env.EMAIL_USER,
+                user,
                 pass: process.env.GOOGLE_APP_PASSWORD || process.env.EMAIL_PASS,
             },
         });
     }
 
-    // Default to OAuth2
+    // OAuth2 setup
     return nodemailer.createTransport({
         service: "gmail",
         auth: {
             type: "OAUTH2",
-            user: process.env.GOOGLE_USER,
+            user,
             clientSecret: process.env.GOOGLE_CLIENT_SECRET,
             refreshToken: process.env.GOOGLE_REFRESH_TOKEN,
             clientId: process.env.GOOGLE_CLIENT_ID,
@@ -32,11 +34,12 @@ transporter.verify()
         console.log("Email transporter is ready to send emails");
     })
     .catch((err) => {
-        console.error("Email transporter verification failed:", err.message || err);
+        console.error("Email transporter verification failed on server startup:", err.message || err);
+        console.warn("Please verify that GOOGLE_USER, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_REFRESH_TOKEN (or GOOGLE_APP_PASSWORD) are set in Render Environment variables.");
     });
 
 export async function sendEmail({ to, subject, html, text }) {
-    const sender = process.env.GOOGLE_USER || process.env.EMAIL_USER;
+    const sender = process.env.GOOGLE_USER || process.env.EMAIL_USER || "verify.querium@gmail.com";
     const mailOptions = {
         from: `Querium <${sender}>`,
         to,

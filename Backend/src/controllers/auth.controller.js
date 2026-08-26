@@ -1,7 +1,7 @@
 import userModel from "../models/user.model.js";
 import jwt from "jsonwebtoken";
 import { sendEmail } from "../services/mail.service.js";
-import redis from "../config/cache.js";
+import { safeRedisGet, safeRedisSet } from "../config/cache.js";
 
 export async function register(req, res) {
     const { username, email, password } = req.body;
@@ -483,7 +483,7 @@ export async function logout(req, res) {
         }
 
         if (ttl > 0) {
-            await redis.set(`token:${token}`, "logout", "EX", ttl);
+            await safeRedisSet(`token:${token}`, "logout", "EX", ttl);
         }
 
         res.clearCookie("token", {
@@ -610,7 +610,7 @@ export async function resetPassword(req, res) {
     }
 
     try {
-        const isUsed = await redis.get(`used_reset_token:${token}`);
+        const isUsed = await safeRedisGet(`used_reset_token:${token}`);
         if (isUsed) {
             return res.status(400).json({
                 message: "This password reset link has already been used",
@@ -633,7 +633,7 @@ export async function resetPassword(req, res) {
         user.password = newPassword;
         await user.save();
 
-        await redis.set(`used_reset_token:${token}`, "true", "EX", 15 * 60);
+        await safeRedisSet(`used_reset_token:${token}`, "true", "EX", 15 * 60);
 
         return res.status(200).json({
             message: "Password reset successfully. You can now login.",
