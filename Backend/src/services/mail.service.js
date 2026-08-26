@@ -40,12 +40,15 @@ transporter.verify()
 
 export async function sendEmail({ to, subject, html, text }) {
     const sender = process.env.GOOGLE_USER || process.env.EMAIL_USER || "verify.querium@gmail.com";
+    const plainTextFallback = text || (html ? html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() : "");
+    
     const mailOptions = {
         from: `Querium <${sender}>`,
+        replyTo: sender,
         to,
         subject,
         html,
-        text,
+        text: plainTextFallback,
     };
 
     try {
