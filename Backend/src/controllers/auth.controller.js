@@ -39,11 +39,10 @@ export async function register(req, res) {
         process.env.JWT_SECRET,
     );
 
-    try {
-        await sendEmail({
-            to: email,
-            subject: "Welcome to Querium!",
-            html: `
+    sendEmail({
+        to: email,
+        subject: "Welcome to Querium!",
+        html: `
 <!DOCTYPE html>
 <html>
 <head>
@@ -207,10 +206,7 @@ export async function register(req, res) {
 </body>
 </html>
 `
-        });
-    } catch (err) {
-        console.error("Welcome email failed to send:", err.message || err);
-    }
+    }).catch(err => console.error("Welcome email background dispatch error:", err.message || err));
 
     return res.status(201).json({
         message: "User registered successfully",
