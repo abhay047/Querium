@@ -413,7 +413,7 @@ export async function verifyEmail(req, res) {
             href="${process.env.CLIENT_URL || 'https://querium-nu.vercel.app'}/login"
             class="button"
         >
-            Continue to Querium
+            Return to Querium
         </a>
 
         <div class="footer">
