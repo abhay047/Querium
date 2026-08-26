@@ -205,21 +205,20 @@ export async function register(req, res) {
     </div>
 
 </body>
-</html>
-`,
-        });
-        res.status(201).json({
-            message: "User registered successfully",
-            success: true,
-            user: {
-                id: user._id,
-                username: user.username,
-                email: user.email,
-            },
         });
     } catch (err) {
-        console.log("Welcome email failed", err);
+        console.error("Welcome email failed to send:", err.message || err);
     }
+
+    return res.status(201).json({
+        message: "User registered successfully",
+        success: true,
+        user: {
+            id: user._id,
+            username: user.username,
+            email: user.email,
+        },
+    });
 }
 
 export async function login(req, res) {
