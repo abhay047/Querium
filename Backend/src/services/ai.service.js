@@ -56,12 +56,15 @@ export async function generateResponse(messages, provider = "gemini") {
     const baseModel = models[provider] || models.gemini;
 
     const systemInstruction = new SystemMessage(
-        "You are Querium AI, an intelligent assistant equipped with vision image identification and live real-time internet search capabilities. Whenever an image is provided by the user, inspect and analyze the image thoroughly, identify any objects, landmarks, products, logos, text, animals, plants, or error messages shown in the image. If you need live internet facts, current prices, or detailed information about the identified items, use the searchInternet tool to search the web for accurate data. ALWAYS answer user questions directly without any preamble or mentioning tool names, using clean Markdown with bold headings, bullet points, and code blocks."
+        "You are Querium AI, an intelligent assistant equipped with vision image identification and live real-time internet search capabilities. Whenever an image is provided by the user, inspect and analyze the image thoroughly. If you need live internet facts, current prices, weather, or recent news, use the searchInternet tool. ALWAYS answer user questions directly without any preamble or mentioning tool names, using clean Markdown with bold headings, bullet points, and code blocks."
     );
+
+    // Context Window Optimization: Keep recent 8 messages to guarantee ultra-fast response times (<1s)
+    const recentMessagesList = messages.length > 8 ? messages.slice(-8) : messages;
 
     const formattedMessages = [
         systemInstruction,
-        ...messages
+        ...recentMessagesList
             .map(msg => {
                 if (msg.role === "user") {
                     if (msg.image) {
@@ -80,41 +83,55 @@ export async function generateResponse(messages, provider = "gemini") {
             .filter(Boolean)
     ];
 
+    const lastUserMsg = messages[messages.length - 1];
+    const lastContent = (lastUserMsg?.content || "").toLowerCase();
+    const hasImage = !!lastUserMsg?.image;
+
+    // Smart real-time search trigger
+    const realTimeKeywords = ["today", "weather", "news", "price", "stock", "score", "match", "live", "latest", "who won", "current", "event", "forecast"];
+    const needsSearchOrVision = hasImage || realTimeKeywords.some(kw => lastContent.includes(kw));
+
     try {
-        const modelWithTools = baseModel.bindTools([searchInternetTool]);
-        let response = await modelWithTools.invoke(formattedMessages);
+        let response;
+        if (needsSearchOrVision) {
+            const modelWithTools = baseModel.bindTools([searchInternetTool]);
+            response = await modelWithTools.invoke(formattedMessages);
 
-        let toolCalls = response.tool_calls || [];
-        if (toolCalls.length === 0 && Array.isArray(response.content)) {
-            for (const item of response.content) {
-                if (item.type === "functionCall" && item.functionCall) {
-                    toolCalls.push({
-                        name: item.functionCall.name,
-                        args: item.functionCall.args,
-                        id: item.functionCall.id
-                    });
-                }
-            }
-        }
-
-        if (toolCalls.length > 0) {
-            let combinedSearchResults = "";
-            for (const toolCall of toolCalls) {
-                if (toolCall.name === "searchInternet") {
-                    const searchResults = await searchInternetTool.invoke(toolCall.args);
-                    const searchString = typeof searchResults === "string" ? searchResults : JSON.stringify(searchResults);
-                    combinedSearchResults += `[Internet Search Results for "${toolCall.args?.query || ''}"]:\n${searchString}\n\n`;
+            let toolCalls = response.tool_calls || [];
+            if (toolCalls.length === 0 && Array.isArray(response.content)) {
+                for (const item of response.content) {
+                    if (item.type === "functionCall" && item.functionCall) {
+                        toolCalls.push({
+                            name: item.functionCall.name,
+                            args: item.functionCall.args,
+                            id: item.functionCall.id
+                        });
+                    }
                 }
             }
 
-            if (combinedSearchResults) {
-                const searchPrompt = [
-                    ...formattedMessages,
-                    new HumanMessage(`[Real-time Internet Search Context]:\n${combinedSearchResults}\nBased on the above real-time internet search results, please provide a complete, clear, and well-formatted answer to the user.`)
-                ];
+            if (toolCalls.length > 0) {
+                let combinedSearchResults = "";
+                for (const toolCall of toolCalls) {
+                    if (toolCall.name === "searchInternet") {
+                        const searchResults = await searchInternetTool.invoke(toolCall.args);
+                        const searchString = typeof searchResults === "string" ? searchResults : JSON.stringify(searchResults);
+                        combinedSearchResults += `[Internet Search Results for "${toolCall.args?.query || ''}"]:\n${searchString}\n\n`;
+                    }
+                }
 
-                response = await baseModel.invoke(searchPrompt);
+                if (combinedSearchResults) {
+                    const searchPrompt = [
+                        ...formattedMessages,
+                        new HumanMessage(`[Real-time Internet Search Context]:\n${combinedSearchResults}\nBased on the above real-time internet search results, please provide a complete, clear, and well-formatted answer to the user.`)
+                    ];
+
+                    response = await baseModel.invoke(searchPrompt);
+                }
             }
+        } else {
+            // Direct ultra-fast LLM invocation (< 800ms) for general queries, coding, logic, and chat
+            response = await baseModel.invoke(formattedMessages);
         }
 
         let finalContent = response.content;

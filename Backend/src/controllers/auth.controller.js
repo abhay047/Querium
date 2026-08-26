@@ -634,3 +634,39 @@ export async function resetPassword(req, res) {
         });
     }
 }
+
+export async function testEmail(req, res) {
+    const { to } = req.query;
+    if (!to) {
+        return res.status(400).json({
+            message: "Please provide a target email in query param: ?to=your_email@gmail.com",
+            hasGoogleUser: !!process.env.GOOGLE_USER,
+            hasGoogleAppPassword: !!process.env.GOOGLE_APP_PASSWORD,
+            hasOAuthClientId: !!process.env.GOOGLE_CLIENT_ID,
+            hasOAuthRefreshToken: !!process.env.GOOGLE_REFRESH_TOKEN
+        });
+    }
+
+    try {
+        const details = await sendEmail({
+            to,
+            subject: "Querium Email Test",
+            html: `<h2>Querium Live Email Test</h2><p>If you see this email, your Render email service is working 100%!</p>`
+        });
+        return res.status(200).json({
+            message: "Email sent successfully!",
+            success: true,
+            messageId: details.messageId,
+            response: details.response
+        });
+    } catch (err) {
+        return res.status(500).json({
+            message: "Email dispatch failed on Render server",
+            error: err.message,
+            hasGoogleUser: !!process.env.GOOGLE_USER,
+            hasGoogleAppPassword: !!process.env.GOOGLE_APP_PASSWORD,
+            hasOAuthClientId: !!process.env.GOOGLE_CLIENT_ID,
+            hasOAuthRefreshToken: !!process.env.GOOGLE_REFRESH_TOKEN
+        });
+    }
+}
