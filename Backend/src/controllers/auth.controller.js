@@ -137,7 +137,7 @@ export async function register(req, res) {
                 margin: 30px 0;
             ">
 
-                <a href="http://localhost:3000/api/auth/verify-email?token=${emailVerificationToken}"
+                <a href="${process.env.BACKEND_URL || 'https://querium.onrender.com'}/api/auth/verify-email?token=${emailVerificationToken}"
                    style="
                         display: inline-block;
                         padding: 14px 30px;
@@ -401,7 +401,7 @@ export async function verifyEmail(req, res) {
         </p>
 
         <a
-            href="http://localhost:5173/login"
+            href="${process.env.CLIENT_URL || 'https://querium-nu.vercel.app'}/login"
             class="button"
         >
             Continue to Querium
@@ -549,7 +549,7 @@ export async function forgotPassword(req, res) {
             <p style="margin: 0 0 20px; font-size: 16px;">Hi <strong>${user.username}</strong>,</p>
             <p style="font-size: 15px; line-height: 1.6; margin: 0 0 25px;">Click the button below to reset your password. This link is valid for 15 minutes.</p>
             <div style="text-align: center; margin: 30px 0;">
-                <a href="http://localhost:5173/reset-password?token=${resetToken}" style="display: inline-block; padding: 14px 30px; background-color: #111111; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 15px; font-weight: 600;">Reset Password</a>
+                <a href="${process.env.CLIENT_URL || 'https://querium-nu.vercel.app'}/reset-password?token=${resetToken}" style="display: inline-block; padding: 14px 30px; background-color: #111111; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 15px; font-weight: 600;">Reset Password</a>
             </div>
             <p style="font-size: 13px; line-height: 1.6; color: #888888; margin-top: 25px;">If you didn't request a password reset, you can safely ignore this email.</p>
             <p style="font-size: 15px; color: #666666; margin-top: 30px; margin-bottom: 8px;">Best regards,<br><strong>The Querium Team</strong></p>
