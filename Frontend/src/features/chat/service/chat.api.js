@@ -19,6 +19,8 @@ export const sendMessage = async ({ message, image, chatId, provider }) => {
 };
 
 export const getChats = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return { chats: [] };
     const response = await api.get("/api/chats");
     return response.data;
 };
