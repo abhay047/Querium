@@ -209,6 +209,10 @@ const Dashboard = () => {
       }
     } catch (err) {
       console.error("Failed to send message:", err);
+      if (err.response?.status === 401) {
+        localStorage.removeItem("token");
+        dispatch(setUser(null));
+      }
     } finally {
       setIsSending(false);
     }

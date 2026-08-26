@@ -2,9 +2,19 @@ import jwt from "jsonwebtoken"
 import redis from "../config/cache.js";
 
 export async function authUser(req,res,next){
-    const token = req.cookies?.token || req.headers.authorization?.split(" ")[1];
+    let token = req.cookies?.token;
 
-    if(!token){
+    if (!token && req.headers.authorization) {
+        const authHeader = req.headers.authorization;
+        if (authHeader.startsWith("Bearer ")) {
+            const extracted = authHeader.split(" ")[1];
+            if (extracted && extracted !== "null" && extracted !== "undefined") {
+                token = extracted;
+            }
+        }
+    }
+
+    if(!token || token === "null" || token === "undefined"){
         return res.status(401).json({
             message: "Unauthorized",
             success: false,
