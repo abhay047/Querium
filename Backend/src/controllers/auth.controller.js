@@ -205,6 +205,8 @@ export async function register(req, res) {
     </div>
 
 </body>
+</html>
+`
         });
     } catch (err) {
         console.error("Welcome email failed to send:", err.message || err);
