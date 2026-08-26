@@ -78,48 +78,76 @@ export async function getChats(req,res) {
 }
 
 export async function getMessages(req,res) {
-    const {chatId} = req.params;
+    try {
+        const {chatId} = req.params;
 
-    const chat = await chatModel.findOne({
-        _id: chatId,
-        user: req.user.id
-    })
+        if (!chatId || !mongoose.Types.ObjectId.isValid(chatId)) {
+            return res.status(404).json({
+                message: "Chat not found"
+            });
+        }
 
-    if(!chat){
-        return res.status(404).json({
-            message: "Chat not found"
-        })
+        const chat = await chatModel.findOne({
+            _id: chatId,
+            user: req.user.id
+        });
+
+        if(!chat){
+            return res.status(404).json({
+                message: "Chat not found"
+            });
+        }
+
+        const messages = await messageModel.find({
+            chat: chatId
+        });
+
+        res.status(200).json({
+            message: "Message retrieved successfully",
+            messages
+        });
+    } catch (err) {
+        console.error("Error in getMessages controller:", err);
+        return res.status(500).json({
+            message: "Failed to retrieve messages",
+            error: err.message
+        });
     }
-
-    const messages = await messageModel.find({
-        chat: chatId
-    })
-
-    res.status(200).json({
-        message: "Message retrieved successfully",
-        messages
-    })
 }
 
 export async function deleteChat(req,res) {
-    const {chatId} = req.params;
+    try {
+        const {chatId} = req.params;
 
-    const chat = await chatModel.findOneAndDelete({
-        _id: chatId,
-        user: req.user.id
-    })
+        if (!chatId || !mongoose.Types.ObjectId.isValid(chatId)) {
+            return res.status(404).json({
+                message: "Chat not found"
+            });
+        }
 
-    if(!chat){
-        return res.status(404).json({
-            message: "Chat not found"
-        })
+        const chat = await chatModel.findOneAndDelete({
+            _id: chatId,
+            user: req.user.id
+        });
+
+        if(!chat){
+            return res.status(404).json({
+                message: "Chat not found"
+            });
+        }
+
+        await messageModel.deleteMany({
+            chat: chatId
+        });
+
+        res.status(200).json({
+            message:"Chat deleted successfully"
+        });
+    } catch (err) {
+        console.error("Error in deleteChat controller:", err);
+        return res.status(500).json({
+            message: "Failed to delete chat",
+            error: err.message
+        });
     }
-
-    await messageModel.deleteMany({
-        chat: chatId
-    })
-
-    res.status(200).json({
-        message:"Chat deleted successfully"
-    })
 }
