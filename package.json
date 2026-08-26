@@ -1,0 +1,13 @@
+{
+  "name": "querium-root",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "cd Backend && npm install",
+    "start": "cd Backend && node server.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

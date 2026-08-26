@@ -1,12 +1,13 @@
 {
-  "name": "perplexity",
+  "name": "querium-backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Querium AI Backend Service",
+  "main": "server.js",
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "npx nodemon server.js",
+    "dev": "nodemon server.js",
+    "build": "npm install",
     "start": "node server.js"
   },
   "engines": {
