@@ -3,10 +3,13 @@ import nodemailer from "nodemailer";
 function createTransporter() {
     const user = process.env.GOOGLE_USER || process.env.EMAIL_USER || "verify.querium@gmail.com";
 
-    // If Gmail App Password is provided (recommended for production)
+    // If Gmail App Password is provided (Recommended for ultra-fast delivery)
     if (process.env.GOOGLE_APP_PASSWORD || process.env.EMAIL_PASS) {
         return nodemailer.createTransport({
             service: "gmail",
+            pool: true,
+            maxConnections: 5,
+            maxMessages: 100,
             auth: {
                 user,
                 pass: process.env.GOOGLE_APP_PASSWORD || process.env.EMAIL_PASS,
@@ -14,9 +17,12 @@ function createTransporter() {
         });
     }
 
-    // OAuth2 setup
+    // High-speed OAuth2 setup
     return nodemailer.createTransport({
         service: "gmail",
+        pool: true,
+        maxConnections: 5,
+        maxMessages: 100,
         auth: {
             type: "OAUTH2",
             user,
@@ -31,7 +37,7 @@ const transporter = createTransporter();
 
 transporter.verify()
     .then(() => {
-        console.log("Email transporter is ready to send emails");
+        console.log("High-speed email transporter pool is ready to send emails");
     })
     .catch((err) => {
         console.error("Email transporter verification failed on server startup:", err.message || err);

@@ -536,11 +536,10 @@ export async function forgotPassword(req, res) {
         { expiresIn: "15m" }
     );
 
-    try {
-        await sendEmail({
-            to: email,
-            subject: "Reset Your Querium Password",
-            html: `
+    sendEmail({
+        to: email,
+        subject: "Reset Your Querium Password",
+        html: `
 <!DOCTYPE html>
 <html>
 <head>
@@ -570,20 +569,12 @@ export async function forgotPassword(req, res) {
 </body>
 </html>
 `,
-        });
+    }).catch(err => console.error("Forgot password email background dispatch error:", err.message || err));
 
-        return res.status(200).json({
-            message: "Password reset link sent to your email",
-            success: true
-        });
-    } catch (err) {
-        console.error("Forgot password email failed", err);
-        return res.status(500).json({
-            message: "Failed to send password reset email",
-            success: false,
-            err: err.message
-        });
-    }
+    return res.status(200).json({
+        message: "Password reset link sent to your email",
+        success: true
+    });
 }
 
 export async function resetPassword(req, res) {
