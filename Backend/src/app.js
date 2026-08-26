@@ -9,12 +9,9 @@ const app = express()
 
 // CORS must be the first middleware so error responses always contain Access-Control-Allow-Origin
 app.use(cors({
-    origin: [
-        "https://querium-nu.vercel.app",
-        "https://querium-nu.vercel.app/",
-        "http://localhost:5173",
-        "http://127.0.0.1:5173"
-    ],
+    origin: function (origin, callback) {
+        return callback(null, true);
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"]

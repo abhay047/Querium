@@ -5,7 +5,7 @@ let io;
 export function initSocket(httpServer){
     io = new Server(httpServer, {
         cors:{
-            origin: ["https://querium-nu.vercel.app", "https://querium-nu.vercel.app/", "http://localhost:5173"],
+            origin: (origin, callback) => callback(null, true),
             credentials: true
         }
     })
