@@ -638,40 +638,46 @@ export async function resetPassword(req, res) {
 
 export async function testEmail(req, res) {
     const { to } = req.query;
+
+    const diagnosis = {
+        hasBrevoSmtp: !!(process.env.BREVO_SMTP_USER && process.env.BREVO_SMTP_PASS),
+        hasBrevoApi: !!process.env.BREVO_API_KEY,
+        hasResendApi: !!process.env.RESEND_API_KEY,
+        hasGoogleAppPassword: !!process.env.GOOGLE_APP_PASSWORD,
+        hasGoogleOAuth: !!(process.env.GOOGLE_REFRESH_TOKEN && process.env.GOOGLE_CLIENT_ID),
+        hasGoogleUser: !!process.env.GOOGLE_USER,
+        activeTransport: process.env.BREVO_SMTP_USER ? "Brevo SMTP" :
+                         process.env.BREVO_API_KEY ? "Brevo REST API" :
+                         process.env.RESEND_API_KEY ? "Resend REST API" :
+                         process.env.GOOGLE_APP_PASSWORD ? "Gmail App Password" :
+                         process.env.GOOGLE_REFRESH_TOKEN ? "Google OAuth2" : "NONE - No transport configured!"
+    };
+
     if (!to) {
         return res.status(400).json({
             message: "Please provide a target email in query param: ?to=your_email@gmail.com",
-            hasGoogleUser: !!process.env.GOOGLE_USER,
-            hasGoogleAppPassword: !!process.env.GOOGLE_APP_PASSWORD,
-            hasOAuthClientId: !!process.env.GOOGLE_CLIENT_ID,
-            hasOAuthRefreshToken: !!process.env.GOOGLE_REFRESH_TOKEN
+            diagnosis,
         });
     }
 
     try {
         const details = await sendEmail({
             to,
-            subject: "Querium Email Test",
+            subject: "Querium Email Test ✅",
             html: `<h2>Querium Live Email Test</h2><p>If you see this email, your Render email service is working 100%!</p>`
         });
         return res.status(200).json({
             message: "Email sent successfully!",
             success: true,
+            diagnosis,
+            provider: details.provider || "nodemailer",
             messageId: details.messageId,
-            response: details.response
         });
     } catch (err) {
-        const isOAuthExpired = err.message && err.message.includes("invalid_grant");
         return res.status(500).json({
-            message: isOAuthExpired
-                ? "Google OAuth2 refresh token expired/revoked. Please use GOOGLE_APP_PASSWORD (Gmail App Password) in Render Environment variables for permanent 24/7 delivery."
-                : "Email dispatch failed on server",
+            message: "Email dispatch failed on server",
             error: err.message,
-            recommendation: "Create a 16-character App Password at https://myaccount.google.com/apppasswords and set GOOGLE_APP_PASSWORD in Render Environment.",
-            hasGoogleUser: !!process.env.GOOGLE_USER,
-            hasGoogleAppPassword: !!process.env.GOOGLE_APP_PASSWORD,
-            hasOAuthClientId: !!process.env.GOOGLE_CLIENT_ID,
-            hasOAuthRefreshToken: !!process.env.GOOGLE_REFRESH_TOKEN
+            diagnosis,
         });
     }
 }

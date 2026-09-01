@@ -1,7 +1,7 @@
 import nodemailer from "nodemailer";
 
 export async function sendEmail({ to, subject, html, text }) {
-    const sender = (process.env.GOOGLE_USER || process.env.EMAIL_USER || "verify.querium@gmail.com").trim();
+    const sender = (process.env.GOOGLE_USER || "verify.querium@gmail.com").trim();
     const recipient = (typeof to === "string" ? to : to?.email || "").trim();
 
     if (!recipient) {
@@ -10,35 +10,33 @@ export async function sendEmail({ to, subject, html, text }) {
 
     const plainTextFallback = text || (html ? html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() : "");
 
-    // Transport 1: Resend HTTPS REST API (Highest reliability for cloud platforms like Render)
-    if (process.env.RESEND_API_KEY) {
+    // Transport 1: Brevo SMTP (Port 587 - Works on Render, 300 free emails/day)
+    if (process.env.BREVO_SMTP_USER && process.env.BREVO_SMTP_PASS) {
         try {
-            const resendRes = await fetch("https://api.resend.com/emails", {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${process.env.RESEND_API_KEY.trim()}`,
-                    "Content-Type": "application/json"
+            const brevoTransporter = nodemailer.createTransport({
+                host: "smtp-relay.brevo.com",
+                port: 587,
+                secure: false,
+                auth: {
+                    user: process.env.BREVO_SMTP_USER.trim(),
+                    pass: process.env.BREVO_SMTP_PASS.trim(),
                 },
-                body: JSON.stringify({
-                    from: process.env.RESEND_FROM || "Querium <onboarding@resend.dev>",
-                    to: [recipient],
-                    subject,
-                    html,
-                    text: plainTextFallback
-                })
             });
-            const resendData = await resendRes.json();
-            if (resendRes.ok) {
-                console.log("Email sent successfully via Resend API to:", recipient, resendData.id);
-                return { messageId: resendData.id, provider: "resend" };
-            }
-            console.warn("Resend API failed, falling back to Gmail SMTP:", resendData);
-        } catch (resendErr) {
-            console.warn("Resend API error:", resendErr.message);
+            const details = await brevoTransporter.sendMail({
+                from: `Querium <${sender}>`,
+                to: recipient,
+                subject,
+                html,
+                text: plainTextFallback,
+            });
+            console.log("Email sent via Brevo SMTP to:", recipient, details.messageId || "");
+            return details;
+        } catch (brevoErr) {
+            console.warn("Brevo SMTP failed:", brevoErr.message);
         }
     }
 
-    // Transport 2: Brevo HTTPS REST API (Free 300 emails/day)
+    // Transport 2: Brevo HTTPS REST API
     if (process.env.BREVO_API_KEY) {
         try {
             const brevoRes = await fetch("https://api.brevo.com/v3/smtp/email", {
@@ -57,39 +55,51 @@ export async function sendEmail({ to, subject, html, text }) {
             });
             const brevoData = await brevoRes.json();
             if (brevoRes.ok) {
-                console.log("Email sent successfully via Brevo API to:", recipient, brevoData.messageId);
+                console.log("Email sent via Brevo REST API to:", recipient, brevoData.messageId);
                 return { messageId: brevoData.messageId, provider: "brevo" };
             }
-            console.warn("Brevo API failed, falling back to Gmail SMTP:", brevoData);
+            console.warn("Brevo REST API failed:", JSON.stringify(brevoData));
         } catch (brevoErr) {
-            console.warn("Brevo API error:", brevoErr.message);
+            console.warn("Brevo REST API error:", brevoErr.message);
         }
     }
 
-    // Transport 3: Standard Gmail Nodemailer (App Password / OAuth2)
-    const pass = (process.env.GOOGLE_APP_PASSWORD || process.env.EMAIL_PASS || "").replace(/\s+/g, "").trim();
-    if (pass || process.env.GOOGLE_REFRESH_TOKEN) {
-        let transporter;
-        if (pass) {
-            transporter = nodemailer.createTransport({
-                service: "gmail",
-                auth: { user: sender, pass },
-                tls: { rejectUnauthorized: false }
-            });
-        } else {
-            transporter = nodemailer.createTransport({
-                service: "gmail",
-                auth: {
-                    type: "OAUTH2",
-                    user: sender,
-                    clientId: (process.env.GOOGLE_CLIENT_ID || "").trim(),
-                    clientSecret: (process.env.GOOGLE_CLIENT_SECRET || "").trim(),
-                    refreshToken: (process.env.GOOGLE_REFRESH_TOKEN || "").trim(),
+    // Transport 3: Resend HTTPS REST API
+    if (process.env.RESEND_API_KEY) {
+        try {
+            const resendRes = await fetch("https://api.resend.com/emails", {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${process.env.RESEND_API_KEY.trim()}`,
+                    "Content-Type": "application/json"
                 },
-                tls: { rejectUnauthorized: false }
+                body: JSON.stringify({
+                    from: process.env.RESEND_FROM || "Querium <onboarding@resend.dev>",
+                    to: [recipient],
+                    subject,
+                    html,
+                    text: plainTextFallback
+                })
             });
+            const resendData = await resendRes.json();
+            if (resendRes.ok) {
+                console.log("Email sent via Resend API to:", recipient, resendData.id);
+                return { messageId: resendData.id, provider: "resend" };
+            }
+            console.warn("Resend API failed:", JSON.stringify(resendData));
+        } catch (resendErr) {
+            console.warn("Resend API error:", resendErr.message);
         }
+    }
 
+    // Transport 4: Gmail App Password via Nodemailer (Works locally, may timeout on Render)
+    const pass = (process.env.GOOGLE_APP_PASSWORD || process.env.EMAIL_PASS || "").replace(/\s+/g, "").trim();
+    if (pass) {
+        const transporter = nodemailer.createTransport({
+            service: "gmail",
+            auth: { user: sender, pass },
+            tls: { rejectUnauthorized: false }
+        });
         try {
             const details = await transporter.sendMail({
                 from: `Querium <${sender}>`,
@@ -99,14 +109,43 @@ export async function sendEmail({ to, subject, html, text }) {
                 html,
                 text: plainTextFallback
             });
-            console.log("Email sent successfully via Nodemailer Gmail to:", recipient, details.messageId || "");
+            console.log("Email sent via Gmail App Password to:", recipient, details.messageId || "");
             return details;
         } catch (gmailErr) {
-            console.error("Nodemailer Gmail failed:", gmailErr.message || gmailErr);
+            console.error("Gmail App Password failed:", gmailErr.message);
             throw gmailErr;
         }
     }
 
-    console.warn("No email service configured. Simulated email dispatch for:", recipient);
-    return { messageId: "simulated_" + Date.now(), provider: "none" };
+    // Transport 5: Google OAuth2
+    if (process.env.GOOGLE_REFRESH_TOKEN && process.env.GOOGLE_CLIENT_ID) {
+        const transporter = nodemailer.createTransport({
+            service: "gmail",
+            auth: {
+                type: "OAUTH2",
+                user: sender,
+                clientId: (process.env.GOOGLE_CLIENT_ID || "").trim(),
+                clientSecret: (process.env.GOOGLE_CLIENT_SECRET || "").trim(),
+                refreshToken: (process.env.GOOGLE_REFRESH_TOKEN || "").trim(),
+            },
+            tls: { rejectUnauthorized: false }
+        });
+        try {
+            const details = await transporter.sendMail({
+                from: `Querium <${sender}>`,
+                replyTo: sender,
+                to: recipient,
+                subject,
+                html,
+                text: plainTextFallback
+            });
+            console.log("Email sent via Google OAuth2 to:", recipient, details.messageId || "");
+            return details;
+        } catch (oauthErr) {
+            console.error("Google OAuth2 failed:", oauthErr.message);
+            throw oauthErr;
+        }
+    }
+
+    throw new Error("No email transport configured. Please set BREVO_SMTP_USER + BREVO_SMTP_PASS, BREVO_API_KEY, RESEND_API_KEY, or GOOGLE_APP_PASSWORD.");
 }
