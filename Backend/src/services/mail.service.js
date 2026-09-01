@@ -18,20 +18,24 @@ export function getTransporter() {
         });
     }
 
-    // Google OAuth2 Transport
-    return nodemailer.createTransport({
-        service: "gmail",
-        auth: {
-            type: "OAUTH2",
-            user,
-            clientId: (process.env.GOOGLE_CLIENT_ID || "").trim(),
-            clientSecret: (process.env.GOOGLE_CLIENT_SECRET || "").trim(),
-            refreshToken: (process.env.GOOGLE_REFRESH_TOKEN || "").trim(),
-        },
-        tls: {
-            rejectUnauthorized: false
-        }
-    });
+    // Fallback to OAuth2 only if explicitly configured
+    if (process.env.GOOGLE_REFRESH_TOKEN && process.env.GOOGLE_CLIENT_ID) {
+        return nodemailer.createTransport({
+            service: "gmail",
+            auth: {
+                type: "OAUTH2",
+                user,
+                clientId: (process.env.GOOGLE_CLIENT_ID || "").trim(),
+                clientSecret: (process.env.GOOGLE_CLIENT_SECRET || "").trim(),
+                refreshToken: (process.env.GOOGLE_REFRESH_TOKEN || "").trim(),
+            },
+            tls: {
+                rejectUnauthorized: false
+            }
+        });
+    }
+
+    throw new Error("GOOGLE_APP_PASSWORD environment variable is missing on server.");
 }
 
 export async function sendEmail({ to, subject, html, text }) {
