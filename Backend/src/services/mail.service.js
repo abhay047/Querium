@@ -4,13 +4,12 @@ export function getTransporter() {
     const user = (process.env.GOOGLE_USER || process.env.EMAIL_USER || "verify.querium@gmail.com").trim();
     const pass = (process.env.GOOGLE_APP_PASSWORD || process.env.EMAIL_PASS || "").replace(/\s+/g, "").trim();
 
-    // Standard Gmail App Password Transport with 5-second socket timeout guards
+    // Direct SSL Port 465 Transport for Cloud Hosts (Render, AWS, Vercel)
     if (pass) {
         return nodemailer.createTransport({
-            service: "gmail",
-            connectionTimeout: 5000,
-            greetingTimeout: 5000,
-            socketTimeout: 5000,
+            host: "smtp.gmail.com",
+            port: 465,
+            secure: true,
             auth: {
                 user,
                 pass,
@@ -24,10 +23,9 @@ export function getTransporter() {
     // Fallback to OAuth2 only if explicitly configured
     if (process.env.GOOGLE_REFRESH_TOKEN && process.env.GOOGLE_CLIENT_ID) {
         return nodemailer.createTransport({
-            service: "gmail",
-            connectionTimeout: 5000,
-            greetingTimeout: 5000,
-            socketTimeout: 5000,
+            host: "smtp.gmail.com",
+            port: 465,
+            secure: true,
             auth: {
                 type: "OAUTH2",
                 user,
