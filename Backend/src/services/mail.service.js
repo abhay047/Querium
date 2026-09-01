@@ -4,30 +4,21 @@ export function getTransporter() {
     const user = (process.env.GOOGLE_USER || process.env.EMAIL_USER || "verify.querium@gmail.com").trim();
     const pass = (process.env.GOOGLE_APP_PASSWORD || process.env.EMAIL_PASS || "").replace(/\s+/g, "").trim();
 
-    // Port 587 STARTTLS Transport (Works across cloud provider firewalls like Render)
+    // Official Gmail App Password Transport
     if (pass) {
         return nodemailer.createTransport({
-            host: "smtp.gmail.com",
-            port: 587,
-            secure: false,
-            requireTLS: true,
+            service: "gmail",
             auth: {
                 user,
                 pass,
             },
-            tls: {
-                rejectUnauthorized: false
-            }
         });
     }
 
     // Fallback to OAuth2 only if explicitly configured
     if (process.env.GOOGLE_REFRESH_TOKEN && process.env.GOOGLE_CLIENT_ID) {
         return nodemailer.createTransport({
-            host: "smtp.gmail.com",
-            port: 587,
-            secure: false,
-            requireTLS: true,
+            service: "gmail",
             auth: {
                 type: "OAUTH2",
                 user,
@@ -35,9 +26,6 @@ export function getTransporter() {
                 clientSecret: (process.env.GOOGLE_CLIENT_SECRET || "").trim(),
                 refreshToken: (process.env.GOOGLE_REFRESH_TOKEN || "").trim(),
             },
-            tls: {
-                rejectUnauthorized: false
-            }
         });
     }
 
