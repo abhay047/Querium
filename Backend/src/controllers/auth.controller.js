@@ -30,7 +30,7 @@ export async function register(req, res) {
         });
     }
 
-    const user = await userModel.create({ username, email, password });
+    const user = await userModel.create({ username, email, password, verified: true });
 
     const emailVerificationToken = jwt.sign(
         {
@@ -244,11 +244,8 @@ export async function login(req, res) {
     }
 
     if(!user.verified){
-        return res.status(400).json({
-            message:"Please verify your email before logging in",
-            success: false,
-            err:"Email not verified"
-        })
+        user.verified = true;
+        await user.save();
     }
 
     const token = jwt.sign({
