@@ -30,7 +30,7 @@ export async function register(req, res) {
         });
     }
 
-    const user = await userModel.create({ username, email, password, verified: true });
+    const user = await userModel.create({ username, email, password });
 
     const emailVerificationToken = jwt.sign(
         {
@@ -244,8 +244,11 @@ export async function login(req, res) {
     }
 
     if(!user.verified){
-        user.verified = true;
-        await user.save();
+        return res.status(400).json({
+            message: "Please verify your email before logging in. Check your inbox for the verification link.",
+            success: false,
+            err: "Email not verified"
+        });
     }
 
     const token = jwt.sign({
@@ -278,7 +281,7 @@ export async function verifyEmail(req, res) {
     const { token } = req.query;
 
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || "querium_jwt_secret_key_2026");
 
         const user = await userModel.findOne({ email: decoded.email });
 
