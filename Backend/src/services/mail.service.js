@@ -4,10 +4,13 @@ export function getTransporter() {
     const user = (process.env.GOOGLE_USER || process.env.EMAIL_USER || "verify.querium@gmail.com").trim();
     const pass = (process.env.GOOGLE_APP_PASSWORD || process.env.EMAIL_PASS || "").replace(/\s+/g, "").trim();
 
-    // Standard Gmail App Password Transport (16-character Google App Password)
+    // Standard Gmail App Password Transport with 5-second socket timeout guards
     if (pass) {
         return nodemailer.createTransport({
             service: "gmail",
+            connectionTimeout: 5000,
+            greetingTimeout: 5000,
+            socketTimeout: 5000,
             auth: {
                 user,
                 pass,
@@ -22,6 +25,9 @@ export function getTransporter() {
     if (process.env.GOOGLE_REFRESH_TOKEN && process.env.GOOGLE_CLIENT_ID) {
         return nodemailer.createTransport({
             service: "gmail",
+            connectionTimeout: 5000,
+            greetingTimeout: 5000,
+            socketTimeout: 5000,
             auth: {
                 type: "OAUTH2",
                 user,
