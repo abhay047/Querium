@@ -36,7 +36,8 @@ export async function register(req, res) {
         {
             email: user.email,
         },
-        process.env.JWT_SECRET,
+        process.env.JWT_SECRET || "querium_jwt_secret_key_2026",
+        { expiresIn: "1d" }
     );
 
     sendEmail({
@@ -660,9 +661,13 @@ export async function testEmail(req, res) {
             response: details.response
         });
     } catch (err) {
+        const isOAuthExpired = err.message && err.message.includes("invalid_grant");
         return res.status(500).json({
-            message: "Email dispatch failed on Render server",
+            message: isOAuthExpired
+                ? "Google OAuth2 refresh token expired/revoked. Please use GOOGLE_APP_PASSWORD (Gmail App Password) in Render Environment variables for permanent 24/7 delivery."
+                : "Email dispatch failed on server",
             error: err.message,
+            recommendation: "Create a 16-character App Password at https://myaccount.google.com/apppasswords and set GOOGLE_APP_PASSWORD in Render Environment.",
             hasGoogleUser: !!process.env.GOOGLE_USER,
             hasGoogleAppPassword: !!process.env.GOOGLE_APP_PASSWORD,
             hasOAuthClientId: !!process.env.GOOGLE_CLIENT_ID,
